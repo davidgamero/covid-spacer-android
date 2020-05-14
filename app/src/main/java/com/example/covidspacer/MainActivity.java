@@ -1,23 +1,21 @@
 package com.example.covidspacer;
 
 import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.Context;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.util.Log;
 import android.widget.CompoundButton;
 import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
-
 import org.altbeacon.beacon.Beacon;
 import org.altbeacon.beacon.BeaconConsumer;
 import org.altbeacon.beacon.BeaconManager;
-import org.altbeacon.beacon.MonitorNotifier;
 import org.altbeacon.beacon.RangeNotifier;
 import org.altbeacon.beacon.Region;
-
 import java.util.Collection;
+import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, BeaconConsumer {
     Switch broadcastSwitch = null;
@@ -26,11 +24,18 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
     protected static final String TAG = "MonitoringActivity";
     private String beacon_UUID = "DDDD98FF-2900-441A-802F-9C398FC1DDDD";
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        TextView majorNum = findViewById(R.id.majorNum);
+        TextView minorNum = findViewById(R.id.minorNum);
+
+        String minor = randomGenerate();
+        String major = randomGenerate();
+
+        minorNum.setText(minor);
+        majorNum.setText(major);
 
         broadcastSwitch = (Switch) findViewById(R.id.broadcastSwitch);
         broadcastSwitch.setOnCheckedChangeListener(this);
@@ -69,5 +74,13 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     protected void onDestroy() {
         super.onDestroy();
         beaconManager.unbind(this);
+    }
+    static String randomGenerate() {
+
+        int bound = 65536;
+        //generate random values from 0-65536
+        Random rand = new Random();
+        return Integer.toString(rand.nextInt(bound));
+
     }
 }
