@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Covid Spacer</string>
+    <string name="major">Major</string>
+    <string name="major_value">Major Value</string>
+    <string name="minor">Minor</string>
+    <string name="minor_value">Minor Value</string>
 </resources>
