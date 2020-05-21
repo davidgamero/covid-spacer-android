@@ -1,2 +1,2 @@
-rootProject.name='Covid Spacer'
+//rootProject.name='Covid Spacer' <---- this was causing a compilation error
 include ':app'

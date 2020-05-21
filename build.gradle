@@ -20,6 +20,8 @@ allprojects {
     repositories {
         google()
         jcenter()
+        // we need to add this to use library simple-ble-scanner
+        maven { url 'https://jitpack.io' }
         
     }
 }
