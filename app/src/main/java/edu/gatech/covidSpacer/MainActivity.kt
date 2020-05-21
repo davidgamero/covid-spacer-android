@@ -13,6 +13,8 @@ class MainActivity : AppCompatActivity() {
         val majorNum = findViewById<TextView>(R.id.majorNum)
         val minorNum = findViewById<TextView>(R.id.minorNum)
 
+        //checking commit
+
         val minor: Int = randomGenerate()
         val major: Int = randomGenerate()
 
