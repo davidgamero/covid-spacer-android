@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
             builder.show()
         }
 
-        // Make sure we have access coarse location enabled, if not, prompt the user to enable it
+        // Make sure we have access fine location enabled, if not, prompt the user to enable it
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             val builder =
                 AlertDialog.Builder(this)
@@ -156,5 +156,5 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    
+
 }
