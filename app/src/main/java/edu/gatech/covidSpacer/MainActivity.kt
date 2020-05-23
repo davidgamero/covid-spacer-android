@@ -1,11 +1,14 @@
 package edu.gatech.covidSpacer
 
 import android.Manifest
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.le.ScanResult
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import br.edu.uepb.nutes.simpleblescanner.SimpleBleScanner
@@ -25,7 +28,49 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         val majorNum = findViewById<TextView>(R.id.majorNum)
         val minorNum = findViewById<TextView>(R.id.minorNum)
+        val sw1 = findViewById<Switch>(R.id.broadcastSwitch)
 
+        val mScanner = SimpleBleScanner.Builder()
+            .addScanPeriod(15000) // 15s in milliseconds
+            .build()
+
+       val mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+
+
+        sw1?.setOnCheckedChangeListener({ _ , isChecked ->
+            
+            //indicate the state of the broadcast
+            val message = if (isChecked) "Broadcast: On" else "Broadcast: Off"
+            Toast.makeText(this@MainActivity, message,
+                Toast.LENGTH_SHORT).show()
+
+            //Enable bluetooth if it isn't already enabled
+            if (!mBluetoothAdapter.isEnabled) {
+                mBluetoothAdapter.enable();
+            }
+
+            mScanner.startScan(object : SimpleScannerCallback {
+                 override fun onScanResult(callbackType: Int, scanResult: ScanResult) {
+                     val device = scanResult.getDevice()
+                     val rssi = scanResult.rssi
+                     Log.d("MainActivity", "Found Device: " + device.toString() + " Rssi: " + rssi.toString())
+                     //Originally I asked to show all the found rssi's
+                     //editText.append("Device: " + device.toString() + " rssi: " + rssi.toString() + "\n")
+                 }
+
+                 override fun onBatchScanResults(scanResults: List<ScanResult>) {
+                     Log.d("MainActivity", "onBatchScanResults(): " + Arrays.toString(scanResults.toTypedArray()))
+                 }
+
+                 override fun onFinish() {
+                     Log.d("MainActivity", "onFinish()")
+                 }
+
+                 override fun onScanFailed(errorCode: Int) {
+                     Log.d("MainActivity", "onScanFailed() $errorCode")
+                 }
+             })
+        })
 
         val minor: Int = randomGenerate()
         val major: Int = randomGenerate()
@@ -80,16 +125,14 @@ class MainActivity : AppCompatActivity() {
 
         // Lets set up the scan
 
-        val mScanner = SimpleBleScanner.Builder()
-            .addScanPeriod(15000) // 15s in milliseconds
-            .build()
+
 
         Log.d("MainActivity", "About to start scan")
 
         // Originally the scan starts when push button , I understand that now we wanting to start with the app?
 
         //button.setOnClickListener {
-            mScanner.startScan(object : SimpleScannerCallback {
+           /*mScanner.startScan(object : SimpleScannerCallback {
                 override fun onScanResult(callbackType: Int, scanResult: ScanResult) {
                     val device = scanResult.getDevice()
                     val rssi = scanResult.rssi
@@ -109,7 +152,7 @@ class MainActivity : AppCompatActivity() {
                 override fun onScanFailed(errorCode: Int) {
                     Log.d("MainActivity", "onScanFailed() $errorCode")
                 }
-            })
+            })*/
         //}
     }
 
@@ -156,5 +199,5 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    
+
 }
