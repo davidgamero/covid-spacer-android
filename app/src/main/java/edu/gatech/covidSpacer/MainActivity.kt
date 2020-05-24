@@ -125,7 +125,7 @@ class MainActivity : AppCompatActivity() {
         // DDDD98FF-2900-441A-802F-9C398FC1DDDD
         fun byteArrayOfInts(vararg ints: Int) = ByteArray(ints.size) { pos -> ints[pos].toByte() }
         val uuid = byteArrayOfInts(0xDD, 0xDD, 0x98, 0xFF, 0x29, 0x00, 0x44, 0x1A, 0x80, 0x2F, 0x9C, 0x39, 0x8F, 0xC1, 0xDD, 0xDD)
-        iBeacon(uuid, 1000, 100).start() //EXAMPLE
+        iBeacon(uuid, major, minor).start() //EXAMPLE
 
         Log.d("MainActivity", "About to initialize scan")
 
