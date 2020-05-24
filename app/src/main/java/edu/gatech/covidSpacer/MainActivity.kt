@@ -36,6 +36,9 @@ class MainActivity : AppCompatActivity() {
 
        val mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
 
+        if (!mBluetoothAdapter.isEnabled) {
+            mBluetoothAdapter.enable();
+        }
 
         sw1?.setOnCheckedChangeListener { _, isChecked ->
 
@@ -50,6 +53,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             mScanner.startScan(object : SimpleScannerCallback {
+
                 override fun onScanResult(callbackType: Int, scanResult: ScanResult) {
                     val device = scanResult.getDevice()
                     val rssi = scanResult.rssi
