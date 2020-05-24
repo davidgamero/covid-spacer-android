@@ -37,8 +37,8 @@ class MainActivity : AppCompatActivity() {
        val mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
 
 
-        sw1?.setOnCheckedChangeListener({ _ , isChecked ->
-            
+        sw1?.setOnCheckedChangeListener { _, isChecked ->
+
             //indicate the state of the broadcast
             val message = if (isChecked) "Broadcast: On" else "Broadcast: Off"
             Toast.makeText(this@MainActivity, message,
@@ -50,27 +50,27 @@ class MainActivity : AppCompatActivity() {
             }
 
             mScanner.startScan(object : SimpleScannerCallback {
-                 override fun onScanResult(callbackType: Int, scanResult: ScanResult) {
-                     val device = scanResult.getDevice()
-                     val rssi = scanResult.rssi
-                     Log.d("MainActivity", "Found Device: " + device.toString() + " Rssi: " + rssi.toString())
-                     //Originally I asked to show all the found rssi's
-                     //editText.append("Device: " + device.toString() + " rssi: " + rssi.toString() + "\n")
-                 }
+                override fun onScanResult(callbackType: Int, scanResult: ScanResult) {
+                    val device = scanResult.getDevice()
+                    val rssi = scanResult.rssi
+                    Log.d("MainActivity", "Found Device: " + device.toString() + " Rssi: " + rssi.toString())
+                    //Originally I asked to show all the found rssi's
+                    //editText.append("Device: " + device.toString() + " rssi: " + rssi.toString() + "\n")
+                }
 
-                 override fun onBatchScanResults(scanResults: List<ScanResult>) {
-                     Log.d("MainActivity", "onBatchScanResults(): " + Arrays.toString(scanResults.toTypedArray()))
-                 }
+                override fun onBatchScanResults(scanResults: List<ScanResult>) {
+                    Log.d("MainActivity", "onBatchScanResults(): " + Arrays.toString(scanResults.toTypedArray()))
+                }
 
-                 override fun onFinish() {
-                     Log.d("MainActivity", "onFinish()")
-                 }
+                override fun onFinish() {
+                    Log.d("MainActivity", "onFinish()")
+                }
 
-                 override fun onScanFailed(errorCode: Int) {
-                     Log.d("MainActivity", "onScanFailed() $errorCode")
-                 }
-             })
-        })
+                override fun onScanFailed(errorCode: Int) {
+                    Log.d("MainActivity", "onScanFailed() $errorCode")
+                }
+            })
+        }
 
         val minor: Int = randomGenerate()
         val major: Int = randomGenerate()
@@ -117,9 +117,11 @@ class MainActivity : AppCompatActivity() {
 
         Beacons.initialize(this)
 
+        // For development we are using the following UUID
+        // DDDD98FF-2900-441A-802F-9C398FC1DDDD
         fun byteArrayOfInts(vararg ints: Int) = ByteArray(ints.size) { pos -> ints[pos].toByte() }
-        val arr = byteArrayOfInts(0xA1, 0x2E, 0x38, 0xD4, 0x89, 0xC3) //EXAMPLE
-        iBeacon(arr, 1000, 100).start() //EXAMPLE
+        val uuid = byteArrayOfInts(0xA1, 0x2E, 0x38, 0xD4, 0x89, 0xC3) //EXAMPLE
+        iBeacon(uuid, 1000, 100).start() //EXAMPLE
 
         Log.d("MainActivity", "About to initialize scan")
 
