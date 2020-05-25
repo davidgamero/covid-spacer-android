@@ -33,7 +33,11 @@ class MainActivity : AppCompatActivity() {
         val deviceList = findViewById<TextView>(R.id.deviceList)
 
         var deviceIDs: ArrayList<String> = ArrayList()
+
         var deviceListEmpty = true
+
+        var idMap = mutableMapOf<String, String>()
+        var mapEmpty = true
 
         val mScanner = SimpleBleScanner.Builder()
             .addScanPeriod(15000) // 15s in milliseconds
@@ -125,16 +129,19 @@ class MainActivity : AppCompatActivity() {
                             "Found Device: " + device.toString() + " Rssi: " + rssi.toString()
                         )
                         //Originally I asked to show all the found rssi's
-                        if(deviceListEmpty)
-                        {
-                            deviceList.text = "\n"
-                            deviceListEmpty = false
+
+
+                        idMap[device.toString()] = rssi.toString()
+                        deviceList.text = "\n"
+                        for (k in idMap.keys){
+                            deviceList.append("Device: " + k + " rssi: " + idMap[k] + "\n")
                         }
-                        if(!deviceIDs.contains(device.toString()))
-                        {
-                            deviceIDs.add(device.toString())
-                            deviceList.append("Device: " + device.toString() + " rssi: " + rssi.toString() + "\n")
-                        }
+
+
+
+
+
+
 
                     }
 
@@ -157,6 +164,7 @@ class MainActivity : AppCompatActivity() {
             else {
                 broadcastBeacon.stop()
                 mScanner.stopScan()
+                deviceList.setText("No Devices Found")
 
             }
         }
