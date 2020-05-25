@@ -30,6 +30,11 @@ class MainActivity : AppCompatActivity() {
         val minorNum = findViewById<TextView>(R.id.minorNum)
         val sw1 = findViewById<Switch>(R.id.broadcastSwitch)
 
+        val deviceList = findViewById<TextView>(R.id.deviceList)
+
+        var deviceIDs: ArrayList<String> = ArrayList()
+        var deviceListEmpty = true
+
         val mScanner = SimpleBleScanner.Builder()
             .addScanPeriod(15000) // 15s in milliseconds
             .build()
@@ -120,7 +125,17 @@ class MainActivity : AppCompatActivity() {
                             "Found Device: " + device.toString() + " Rssi: " + rssi.toString()
                         )
                         //Originally I asked to show all the found rssi's
-                        //editText.append("Device: " + device.toString() + " rssi: " + rssi.toString() + "\n")
+                        if(deviceListEmpty)
+                        {
+                            deviceList.text = "\n"
+                            deviceListEmpty = false
+                        }
+                        if(!deviceIDs.contains(device.toString()))
+                        {
+                            deviceIDs.add(device.toString())
+                            deviceList.append("Device: " + device.toString() + " rssi: " + rssi.toString() + "\n")
+                        }
+
                     }
 
                     override fun onBatchScanResults(scanResults: List<ScanResult>) {
@@ -141,6 +156,7 @@ class MainActivity : AppCompatActivity() {
             }
             else {
                 broadcastBeacon.stop()
+                mScanner.stopScan()
 
             }
         }
