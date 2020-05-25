@@ -4,11 +4,13 @@ import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.le.ScanResult
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import br.edu.uepb.nutes.simpleblescanner.SimpleBleScanner
@@ -23,6 +25,7 @@ class MainActivity : AppCompatActivity() {
     private val PERMISSION_REQUEST_COARSE_LOCATION = 1
     private val PERMISSION_REQUEST_FINE_LOCATION = 2
 
+    @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -124,6 +127,7 @@ class MainActivity : AppCompatActivity() {
 
                 mScanner.startScan(object : SimpleScannerCallback {
 
+                    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
                     override fun onScanResult(callbackType: Int, scanResult: ScanResult) {
                         val device = scanResult.getDevice()
                         val rssi = scanResult.rssi
