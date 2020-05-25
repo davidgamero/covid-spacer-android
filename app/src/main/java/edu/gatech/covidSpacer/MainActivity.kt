@@ -32,12 +32,9 @@ class MainActivity : AppCompatActivity() {
 
         val deviceList = findViewById<TextView>(R.id.deviceList)
 
-        var deviceIDs: ArrayList<String> = ArrayList()
-
-        var deviceListEmpty = true
-
+        
         var idMap = mutableMapOf<String, String>()
-        var mapEmpty = true
+
 
         val mScanner = SimpleBleScanner.Builder()
             .addScanPeriod(15000) // 15s in milliseconds
