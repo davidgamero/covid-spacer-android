@@ -28,11 +28,15 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         val majorNum = findViewById<TextView>(R.id.majorNum)
         val minorNum = findViewById<TextView>(R.id.minorNum)
+
+        //reference switch to be manipulated
         val sw1 = findViewById<Switch>(R.id.broadcastSwitch)
 
+
+        //set the text view to be changed by the scan results
         val deviceList = findViewById<TextView>(R.id.deviceList)
 
-        
+        //set map to store scan results
         var idMap = mutableMapOf<String, String>()
 
 
@@ -40,8 +44,10 @@ class MainActivity : AppCompatActivity() {
             .addScanPeriod(15000) // 15s in milliseconds
             .build()
 
+        //connect to bluetooth module on phone
        val mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
 
+        //turn on bluetooth if not enabled
         if (!mBluetoothAdapter.isEnabled) {
             mBluetoothAdapter.enable();
         }
@@ -100,7 +106,7 @@ class MainActivity : AppCompatActivity() {
         val broadcastBeacon = iBeacon(uuid, major, minor) //EXAMPLE
         //broadcastBeacon.pause() //EXAMPLE
 
-
+        //set the switch on change listener to toggle the broadcast and scan
         sw1?.setOnCheckedChangeListener { _, isChecked ->
 
             //indicate the state of the broadcast
@@ -127,18 +133,12 @@ class MainActivity : AppCompatActivity() {
                         )
                         //Originally I asked to show all the found rssi's
 
-
+                        //update map with rssi val and print the list
                         idMap[device.toString()] = rssi.toString()
-                        deviceList.text = "\n"
+                        deviceList.text = ""
                         for (k in idMap.keys){
                             deviceList.append("Device: " + k + " rssi: " + idMap[k] + "\n")
                         }
-
-
-
-
-
-
 
                     }
 
@@ -162,6 +162,7 @@ class MainActivity : AppCompatActivity() {
                 broadcastBeacon.stop()
                 mScanner.stopScan()
                 deviceList.setText("No Devices Found")
+                idMap = mutableMapOf<String, String>()
 
             }
         }
@@ -215,6 +216,7 @@ class MainActivity : AppCompatActivity() {
                     builder.setMessage("Since location access has not been granted, this app will not be able to discover beacons when in the background.")
                     builder.setPositiveButton("OK", null)
                     builder.show()
+
                 }
                 return
             }
