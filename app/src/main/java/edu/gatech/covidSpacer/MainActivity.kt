@@ -44,7 +44,8 @@ class MainActivity : AppCompatActivity() {
 
 
         val mScanner = SimpleBleScanner.Builder()
-            .addScanPeriod(15000) // 15s in milliseconds
+            .addScanPeriod(15000)
+            //.addFilterServiceUuid("DDDD98FF-2900-441A-802F-9C398FC1DDDD")// 15s in milliseconds
             .build()
 
         //connect to bluetooth module on phone
@@ -130,6 +131,11 @@ class MainActivity : AppCompatActivity() {
                     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
                     override fun onScanResult(callbackType: Int, scanResult: ScanResult) {
                         val device = scanResult.getDevice()
+                        val uuids = device.uuids
+                        if(uuids != null)
+                            Log.d("UUID message", uuids.toString())
+                        else
+                            Log.d("UUID", "Null")
                         val rssi = scanResult.rssi
                         Log.d(
                             "MainActivity",
