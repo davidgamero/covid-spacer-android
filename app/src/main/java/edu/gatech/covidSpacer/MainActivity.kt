@@ -3,10 +3,14 @@ package edu.gatech.covidSpacer
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.le.ScanResult
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
+import android.widget.Button
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
@@ -19,6 +23,7 @@ import com.uriio.beacons.Beacons
 import com.uriio.beacons.model.iBeacon
 import java.util.*
 import kotlin.random.Random
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -34,6 +39,7 @@ class MainActivity : AppCompatActivity() {
 
         //reference switch to be manipulated
         val sw1 = findViewById<Switch>(R.id.broadcastSwitch)
+        val btn1 = findViewById<Button>(R.id.shareButton)
 
 
         //set the text view to be changed by the scan results
@@ -55,7 +61,6 @@ class MainActivity : AppCompatActivity() {
         if (!mBluetoothAdapter.isEnabled) {
             mBluetoothAdapter.enable();
         }
-
 
 
         val minor: Int = randomGenerate()
@@ -181,12 +186,14 @@ class MainActivity : AppCompatActivity() {
         // Lets set up the scan
 
 
-
         Log.d("MainActivity", "About to start scan")
 
         // Originally the scan starts when push button , I understand that now we wanting to start with the app?
 
 
+        btn1?.setOnClickListener {
+            sendEmail()
+        }
     }
 
     private fun randomGenerate(): Int {
@@ -232,6 +239,25 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun sendEmail() {
+        val filename = "COVID_Spacer_Data.CVS"
+        //val filelocation =
+        //File(Environment.getExternalStorageDirectory().getAbsolutePath(), filename)
+        //val path = Uri.fromFile(filelocation)
+        val emailIntent = Intent(Intent.ACTION_SEND)
+        // set the type to 'email'
+        emailIntent.type = "vnd.android.cursor.dir/email"
+
+       // val to = arrayOf("ghkurfess@gmail.com")
+       // emailIntent.putExtra(Intent.EXTRA_EMAIL, to)
+        // the attachment
+        //emailIntent.putExtra(Intent.EXTRA_STREAM, path)
+        // the mail subject
+        emailIntent.putExtra(Intent.EXTRA_SUBJECT, "COVID Spacer Data")
+        startActivity(Intent.createChooser(emailIntent, "Send email..."))
+    }
+
 
 
 }
