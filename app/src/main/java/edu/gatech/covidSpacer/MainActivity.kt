@@ -2,10 +2,10 @@ package edu.gatech.covidSpacer
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.le.ScanResult
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.RemoteException
 import android.util.Log
 import android.widget.Switch
 import android.widget.TextView
@@ -13,17 +13,23 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import br.edu.uepb.nutes.simpleblescanner.SimpleBleScanner
-import br.edu.uepb.nutes.simpleblescanner.SimpleScannerCallback
 import com.uriio.beacons.Beacons
 import com.uriio.beacons.model.iBeacon
-import java.util.*
+import org.altbeacon.beacon.*
 import kotlin.random.Random
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), BeaconConsumer {
 
     private val PERMISSION_REQUEST_COARSE_LOCATION = 1
     private val PERMISSION_REQUEST_FINE_LOCATION = 2
+    private val COVID_SPACER_UUID = "DDDD98FF-2900-441A-802F-9C398FC1DDDD"
+    private var beaconManager: BeaconManager? = null
+    private var isScanning = true
+
+
+    data class BeaconDataClass(val majorVal:String, val minorVal: String, var rssiArray: IntArray = IntArray(3){0}, var distanceArray: DoubleArray = DoubleArray(3){10.0}, var avgRssi:Int = 0, var avgDistance:Double = 10.0)
+
+    var idMap = mutableMapOf<Beacon, BeaconDataClass>()
 
     @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,20 +42,23 @@ class MainActivity : AppCompatActivity() {
         val sw1 = findViewById<Switch>(R.id.broadcastSwitch)
 
 
+
         //set the text view to be changed by the scan results
-        val deviceList = findViewById<TextView>(R.id.deviceList)
+
 
         //set map to store scan results
-        var idMap = mutableMapOf<String, String>()
 
 
-        val mScanner = SimpleBleScanner.Builder()
-            .addScanPeriod(15000)
+
+
+        //val mScanner = SimpleBleScanner.Builder()
+            //.addScanPeriod(15000)
             //.addFilterServiceUuid("DDDD98FF-2900-441A-802F-9C398FC1DDDD")// 15s in milliseconds
-            .build()
+           // .build()
 
         //connect to bluetooth module on phone
        val mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        Log.d("bluetoothinfo", mBluetoothAdapter.address.toString())
 
         //turn on bluetooth if not enabled
         if (!mBluetoothAdapter.isEnabled) {
@@ -108,6 +117,13 @@ class MainActivity : AppCompatActivity() {
         fun byteArrayOfInts(vararg ints: Int) = ByteArray(ints.size) { pos -> ints[pos].toByte() }
         val uuid = byteArrayOfInts(0xDD, 0xDD, 0x98, 0xFF, 0x29, 0x00, 0x44, 0x1A, 0x80, 0x2F, 0x9C, 0x39, 0x8F, 0xC1, 0xDD, 0xDD)
         val broadcastBeacon = iBeacon(uuid, major, minor) //EXAMPLE
+
+        val region = Region(
+            "myBeacons",
+            Identifier.parse("DDDD98FF-2900-441A-802F-9C398FC1DDDD"),
+            Identifier.parse("2185"),
+            Identifier.parse("1063")
+        )
         //broadcastBeacon.pause() //EXAMPLE
 
         //set the switch on change listener to toggle the broadcast and scan
@@ -124,55 +140,35 @@ class MainActivity : AppCompatActivity() {
                     mBluetoothAdapter.enable();
                 }
 
+                isScanning = true
+
                 broadcastBeacon.start()
+                beaconManager = BeaconManager.getInstanceForApplication(this)
+                beaconManager!!.getBeaconParsers().add(
+                    BeaconParser().
+                    setBeaconLayout("m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"));
+                beaconManager!!.startMonitoringBeaconsInRegion(region);
+                beaconManager!!.bind(this)
 
-                mScanner.startScan(object : SimpleScannerCallback {
 
-                    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-                    override fun onScanResult(callbackType: Int, scanResult: ScanResult) {
-                        val device = scanResult.getDevice()
-                        val uuids = device.uuids
-                        if(uuids != null)
-                            Log.d("UUID message", uuids.toString())
-                        else
-                            Log.d("UUID", "Null")
-                        val rssi = scanResult.rssi
-                        Log.d(
-                            "MainActivity",
-                            "Found Device: " + device.toString() + " Rssi: " + rssi.toString()
-                        )
-                        //Originally I asked to show all the found rssi's
 
-                        //update map with rssi val and print the list
-                        idMap[device.toString()] = rssi.toString()
-                        deviceList.text = ""
-                        for (k in idMap.keys){
-                            deviceList.append("Device: " + k + " rssi: " + idMap[k] + "\n")
-                        }
-
-                    }
-
-                    override fun onBatchScanResults(scanResults: List<ScanResult>) {
-                        Log.d(
-                            "MainActivity",
-                            "onBatchScanResults(): " + Arrays.toString(scanResults.toTypedArray())
-                        )
-                    }
-
-                    override fun onFinish() {
-                        Log.d("MainActivity", "onFinish()")
-                    }
-
-                    override fun onScanFailed(errorCode: Int) {
-                        Log.d("MainActivity", "onScanFailed() $errorCode")
-                    }
-                })
             }
             else {
+                isScanning = false
                 broadcastBeacon.stop()
-                mScanner.stopScan()
+                //mScanner.stopScan()
+                val deviceList = findViewById<TextView>(R.id.deviceList)
                 deviceList.setText("No Devices Found")
-                idMap = mutableMapOf<String, String>()
+                /*beaconManager!!.stopMonitoringBeaconsInRegion(Region(
+                    "myRangingUniqueId",
+                    null,
+                    null,
+                    null
+                ))*/
+                beaconManager!!.unbind(this)
+
+                idMap = mutableMapOf<Beacon, BeaconDataClass>()
+
 
             }
         }
@@ -185,6 +181,91 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "About to start scan")
 
         // Originally the scan starts when push button , I understand that now we wanting to start with the app?
+
+
+    }
+    override fun onDestroy() {
+        super.onDestroy()
+        beaconManager!!.unbind(this)
+    }
+    override fun onBeaconServiceConnect() {
+
+            Log.d("BeaconService", "Entered service connect")
+
+            val deviceList = findViewById<TextView>(R.id.deviceList)
+
+            Log.d("BeaconService", beaconManager.toString())
+            beaconManager!!.addRangeNotifier(object : RangeNotifier {
+                override fun didRangeBeaconsInRegion(beacons: Collection<Beacon>, region: Region) {
+                    Log.d("BEACONDS", beacons.toString())
+                    if (beacons.size > 0) {
+
+                        for (bcn in beacons) {
+                            if (bcn.id1.toString().equals(COVID_SPACER_UUID, true))
+                            //idMap[bcn] = (bcn.distance*3.2808399).toString()
+                                if(idMap.keys.contains(bcn)) {
+                                    val  rssiTemp = idMap[bcn]!!.rssiArray
+                                    rssiTemp[0] = rssiTemp[1]
+                                    rssiTemp[1] = rssiTemp[2]
+                                    rssiTemp[2] = bcn.rssi
+                                    val distanceTemp = idMap[bcn]!!.distanceArray
+                                    distanceTemp[0] = distanceTemp[1]
+                                    distanceTemp[1] = distanceTemp[2]
+                                    distanceTemp[2] = bcn.distance
+                                    idMap[bcn] = idMap[bcn]!!.copy(rssiArray = rssiTemp, distanceArray = distanceTemp, avgRssi = rssiTemp.average().toInt(), avgDistance = distanceTemp.average())
+                                                                        }
+                                else {
+                                    idMap[bcn] = BeaconDataClass(majorVal = bcn.id2.toString(),
+                                        minorVal = bcn.id3.toString(),
+                                        rssiArray = IntArray(3) { bcn.rssi },
+                                        distanceArray = DoubleArray(3) { bcn.distance },
+                                        avgRssi = bcn.rssi, avgDistance = bcn.distance)
+                                }
+
+                        }
+
+
+                        val tempMap = idMap
+                        val iter = tempMap.iterator()
+                        while (iter.hasNext()) {
+                            val keyval = iter.next()
+                            if (keyval.key !in beacons)
+                                idMap.remove(keyval.key)
+                        }
+
+                        deviceList.text = ""
+                        for (k in idMap.keys) {
+                            val bcnData = idMap[k]
+                            deviceList.append("Device: " + k.bluetoothAddress.toString() + "Avg. Rssi:" + bcnData!!.avgRssi + "\n")
+                        }
+
+
+                        val firstBeacon = beacons.iterator().next()
+                        runOnUiThread {
+
+                            Log.d("FIRSTBEACONS", firstBeacon.id1.toString())
+                            Log.d(
+                                "beacon",
+                                "The coffee beacon " + firstBeacon.toString() + " is about " + firstBeacon.distance + " meters away."
+                            )
+                        }
+                    }
+                }
+            })
+
+            try {
+                beaconManager!!.startRangingBeaconsInRegion(
+                    Region(
+                        "myRangingUniqueId",
+                        null,
+                        null,
+                        null
+                    )
+                )
+            } catch (e: RemoteException) {
+            }
+
+
 
 
     }
