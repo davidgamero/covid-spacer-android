@@ -125,7 +125,6 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
             Identifier.parse("1063")
         )
         //broadcastBeacon.pause() //EXAMPLE
-
         //set the switch on change listener to toggle the broadcast and scan
         sw1?.setOnCheckedChangeListener { _, isChecked ->
 
