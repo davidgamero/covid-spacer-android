@@ -5,4 +5,8 @@
     <string name="minor">Minor</string>
     <string name="minor_value">Minor Value</string>
     <string name="share">Share</string>
+    <string name="channel_name">covid_spacer_channel</string>
+    <string name="channel_description">covid spacer notification for background scanning</string>
+
+
 </resources>

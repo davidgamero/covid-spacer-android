@@ -1,7 +1,12 @@
 package edu.gatech.covidSpacer
 
 import android.Manifest
+import android.annotation.TargetApi
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.bluetooth.BluetoothAdapter
+import android.content.Context
+import android.content.DialogInterface
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -13,20 +18,26 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
 import com.uriio.beacons.Beacons
 import com.uriio.beacons.model.iBeacon
 import org.altbeacon.beacon.*
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 class MainActivity : AppCompatActivity(), BeaconConsumer {
 
     private val PERMISSION_REQUEST_COARSE_LOCATION = 1
     private val PERMISSION_REQUEST_FINE_LOCATION = 2
+    private val PERMISSION_REQUEST_BACKGROUND_LOCATION = 3
     private val COVID_SPACER_UUID = "DDDD98FF-2900-441A-802F-9C398FC1DDDD"
     private var beaconManager: BeaconManager? = null
     private var isScanning = true
-
-
+    private var backgroundNotification: NotificationCompat.Builder? = null
+    private var notificationManager: NotificationManager? = null
+    private var notificationNum = 0
+    private val notifyID = 456
+    private val CHANNEL_ID = "Covid Background Channel"
     data class BeaconDataClass(val majorVal:String, val minorVal: String, var rssiArray: IntArray = IntArray(3){0}, var distanceArray: DoubleArray = DoubleArray(3){10.0}, var avgRssi:Int = 0, var avgDistance:Double = 10.0)
 
     var idMap = mutableMapOf<Beacon, BeaconDataClass>()
@@ -52,18 +63,21 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
 
 
         //val mScanner = SimpleBleScanner.Builder()
-            //.addScanPeriod(15000)
-            //.addFilterServiceUuid("DDDD98FF-2900-441A-802F-9C398FC1DDDD")// 15s in milliseconds
-           // .build()
+        //.addScanPeriod(15000)
+        //.addFilterServiceUuid("DDDD98FF-2900-441A-802F-9C398FC1DDDD")// 15s in milliseconds
+        // .build()
 
         //connect to bluetooth module on phone
-       val mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        val mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
         Log.d("bluetoothinfo", mBluetoothAdapter.address.toString())
 
         //turn on bluetooth if not enabled
         if (!mBluetoothAdapter.isEnabled) {
-            mBluetoothAdapter.enable();
+            mBluetoothAdapter.enable()
         }
+
+
+        createNotification()
 
 
 
@@ -106,6 +120,28 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
             builder.show()
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (this.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+
+                val builder: AlertDialog.Builder = AlertDialog.Builder(this);
+                builder.setTitle("This app needs background location access");
+                builder.setMessage("Please grant location access so this app can detect beacons in the background.");
+                builder.setPositiveButton("ok", null);
+                builder.setOnDismissListener(DialogInterface.OnDismissListener() {
+
+                    requestPermissions(
+                        arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION),
+                        PERMISSION_REQUEST_BACKGROUND_LOCATION
+                    )
+
+                });
+                builder.show();
+
+            }
+        }
+
         //Initialize beacon and assign a UUID, in my original application the beacon starts when the app starts,
         // now we want it to start when button?
 
@@ -136,7 +172,7 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
             if (isChecked) {
                 //Enable bluetooth if it isn't already enabled
                 if (!mBluetoothAdapter.isEnabled) {
-                    mBluetoothAdapter.enable();
+                    mBluetoothAdapter.enable()
                 }
 
                 isScanning = true
@@ -145,9 +181,14 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
                 beaconManager = BeaconManager.getInstanceForApplication(this)
                 beaconManager!!.getBeaconParsers().add(
                     BeaconParser().
-                    setBeaconLayout("m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"));
-                beaconManager!!.startMonitoringBeaconsInRegion(region);
+                    setBeaconLayout("m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"))
+                beaconManager!!.startMonitoringBeaconsInRegion(region)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                    beaconManager!!.enableForegroundServiceScanning(backgroundNotification?.build(), notifyID)
+                beaconManager!!.setBackgroundBetweenScanPeriod(0)
+                beaconManager!!.setBackgroundScanPeriod(1100)
                 beaconManager!!.bind(this)
+
 
 
 
@@ -164,8 +205,9 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
                     null,
                     null
                 ))*/
-                beaconManager!!.unbind(this)
 
+                beaconManager!!.unbind(this)
+                beaconManager!!.disableForegroundServiceScanning()
                 idMap = mutableMapOf<Beacon, BeaconDataClass>()
 
 
@@ -189,80 +231,94 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
     }
     override fun onBeaconServiceConnect() {
 
-            Log.d("BeaconService", "Entered service connect")
+        Log.d("BeaconService", "Entered service connect")
 
-            val deviceList = findViewById<TextView>(R.id.deviceList)
+        val deviceList = findViewById<TextView>(R.id.deviceList)
 
-            Log.d("BeaconService", beaconManager.toString())
-            beaconManager!!.addRangeNotifier(object : RangeNotifier {
-                override fun didRangeBeaconsInRegion(beacons: Collection<Beacon>, region: Region) {
-                    Log.d("BEACONDS", beacons.toString())
-                    if (beacons.size > 0) {
+        Log.d("BeaconService", beaconManager.toString())
+        beaconManager!!.addRangeNotifier(object : RangeNotifier {
+            override fun didRangeBeaconsInRegion(beacons: Collection<Beacon>, region: Region) {
+                Log.d("BEACONDS", beacons.toString())
+                if (beacons.size > 0) {
 
-                        for (bcn in beacons) {
-                            if (bcn.id1.toString().equals(COVID_SPACER_UUID, true))
-                            //idMap[bcn] = (bcn.distance*3.2808399).toString()
-                                if(idMap.keys.contains(bcn)) {
-                                    val  rssiTemp = idMap[bcn]!!.rssiArray
-                                    rssiTemp[0] = rssiTemp[1]
-                                    rssiTemp[1] = rssiTemp[2]
-                                    rssiTemp[2] = bcn.rssi
-                                    val distanceTemp = idMap[bcn]!!.distanceArray
-                                    distanceTemp[0] = distanceTemp[1]
-                                    distanceTemp[1] = distanceTemp[2]
-                                    distanceTemp[2] = bcn.distance
-                                    idMap[bcn] = idMap[bcn]!!.copy(rssiArray = rssiTemp, distanceArray = distanceTemp, avgRssi = rssiTemp.average().toInt(), avgDistance = distanceTemp.average())
-                                                                        }
-                                else {
-                                    idMap[bcn] = BeaconDataClass(majorVal = bcn.id2.toString(),
-                                        minorVal = bcn.id3.toString(),
-                                        rssiArray = IntArray(3) { bcn.rssi },
-                                        distanceArray = DoubleArray(3) { bcn.distance },
-                                        avgRssi = bcn.rssi, avgDistance = bcn.distance)
-                                }
-
-                        }
+                    for (bcn in beacons) {
+                        if (bcn.id1.toString().equals(COVID_SPACER_UUID, true))
 
 
-                        val tempMap = idMap
-                        val iter = tempMap.iterator()
-                        while (iter.hasNext()) {
-                            val keyval = iter.next()
-                            if (keyval.key !in beacons)
-                                idMap.remove(keyval.key)
-                        }
+                        //idMap[bcn] = (bcn.distance*3.2808399).toString()
+                            if(idMap.keys.contains(bcn)) {
+                                val  rssiTemp = idMap[bcn]!!.rssiArray
+                                rssiTemp[0] = rssiTemp[1]
+                                rssiTemp[1] = rssiTemp[2]
+                                rssiTemp[2] = bcn.rssi
+                                val distanceTemp = idMap[bcn]!!.distanceArray
+                                distanceTemp[0] = distanceTemp[1]
+                                distanceTemp[1] = distanceTemp[2]
+                                distanceTemp[2] = bcn.distance*3.2808399 //convert to feet
+                                idMap[bcn] = idMap[bcn]!!.copy(rssiArray = rssiTemp, distanceArray = distanceTemp, avgRssi = rssiTemp.average().toInt(), avgDistance = distanceTemp.average())
+                            }
+                            else {
+                                idMap[bcn] = BeaconDataClass(majorVal = bcn.id2.toString(),
+                                    minorVal = bcn.id3.toString(),
+                                    rssiArray = IntArray(3) { bcn.rssi },
+                                    distanceArray = DoubleArray(3) { bcn.distance*3.2808399 },
+                                    avgRssi = bcn.rssi, avgDistance = bcn.distance*3.2808399)
+                            }
 
-                        deviceList.text = ""
-                        for (k in idMap.keys) {
-                            val bcnData = idMap[k]
-                            deviceList.append("Device: " + k.bluetoothAddress.toString() + "Avg. Rssi:" + bcnData!!.avgRssi + "\n")
-                        }
+                    }
 
 
-                        val firstBeacon = beacons.iterator().next()
-                        runOnUiThread {
+                    val tempMap = idMap
+                    val iter = tempMap.iterator()
+                    while (iter.hasNext()) {
+                        val keyval = iter.next()
+                        if (keyval.key !in beacons)
+                            idMap.remove(keyval.key)
+                    }
 
-                            Log.d("FIRSTBEACONS", firstBeacon.id1.toString())
-                            Log.d(
-                                "beacon",
-                                "The coffee beacon " + firstBeacon.toString() + " is about " + firstBeacon.distance + " meters away."
-                            )
-                        }
+                    deviceList.text = ""
+                    var minimumDistance = 50.0
+                    for (k in idMap.keys) {
+                        val bcnData = idMap[k]
+                        if (bcnData!!.avgDistance < minimumDistance)
+                            minimumDistance = bcnData!!.avgDistance
+
+                        deviceList.append("Major: " + bcnData!!.majorVal + " Distance:" + String.format("%.1f",bcnData.avgDistance)+ " ft.\n")
+
+                        val  notificationUpdate = NotificationCompat.Builder(this@MainActivity, CHANNEL_ID)
+                            .setContentTitle("Closest Beacon: " + String.format("%.1f",minimumDistance)+" ft away")
+                            .setContentText("Scanning for other beacons for covid spacer")
+                            .setSmallIcon(R.drawable.ic_launcher_background)
+                            .setNumber(++notificationNum)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                            notificationManager!!.notify(notifyID, notificationUpdate.build())
+                    }
+
+
+                    val firstBeacon = beacons.iterator().next()
+                    runOnUiThread {
+
+                        Log.d("FIRSTBEACONS", firstBeacon.id1.toString())
+                        Log.d(
+                            "beacon",
+                            "The coffee beacon " + firstBeacon.toString() + " is about " + firstBeacon.distance + " meters away."
+                        )
                     }
                 }
-            })
-
-            try {
-                beaconManager!!.startRangingBeaconsInRegion(
-                    Region(
-                        "myRangingUniqueId",
-                        null,
-                        null,
-                        null
-                    )
-                )
-            } catch (e: RemoteException) {
             }
+        })
+
+        try {
+            beaconManager!!.startRangingBeaconsInRegion(
+                Region(
+                    "myRangingUniqueId",
+                    null,
+                    null,
+                    null
+                )
+            )
+        } catch (e: RemoteException) {
+        }
 
 
 
@@ -313,5 +369,29 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
         }
     }
 
+    private fun createNotification() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = getString(R.string.channel_name)
+            val descriptionText = getString(R.string.channel_description)
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+            }
+            // Register the channel with the system
+            notificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager!!.createNotificationChannel(channel)
 
+            //builds teh notification
+            backgroundNotification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_launcher_background)
+                .setContentTitle("Scanning for Beacons")
+                .setContentText("Scanning for other beacons for covid spacer")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+
+        }
+    }
 }
