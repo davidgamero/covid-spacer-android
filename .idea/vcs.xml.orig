@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+<<<<<<< HEAD
+    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/covid-spacer-java-android" vcs="Git" />
+=======
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+>>>>>>> b608c10d5d3b9ad78ae5e159ad6c1da57eb3bbb0
+  </component>
+</project>

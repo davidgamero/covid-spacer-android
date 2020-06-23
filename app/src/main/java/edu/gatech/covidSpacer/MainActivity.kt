@@ -1,16 +1,13 @@
 package edu.gatech.covidSpacer
 
 import android.Manifest
-import android.annotation.TargetApi
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.DialogInterface
 import android.content.pm.PackageManager
-import android.os.Build
-import android.os.Bundle
-import android.os.RemoteException
+import android.os.*
 import android.util.Log
 import android.widget.Switch
 import android.widget.TextView
@@ -22,7 +19,6 @@ import androidx.core.app.NotificationCompat
 import com.uriio.beacons.Beacons
 import com.uriio.beacons.model.iBeacon
 import org.altbeacon.beacon.*
-import kotlin.math.roundToInt
 import kotlin.random.Random
 
 class MainActivity : AppCompatActivity(), BeaconConsumer {
@@ -30,6 +26,7 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
     private val PERMISSION_REQUEST_COARSE_LOCATION = 1
     private val PERMISSION_REQUEST_FINE_LOCATION = 2
     private val PERMISSION_REQUEST_BACKGROUND_LOCATION = 3
+    private val NULL_INT_PLACEHOLDER = 158
     private val COVID_SPACER_UUID = "DDDD98FF-2900-441A-802F-9C398FC1DDDD"
     private var beaconManager: BeaconManager? = null
     private var isScanning = true
@@ -38,9 +35,11 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
     private var notificationNum = 0
     private val notifyID = 456
     private val CHANNEL_ID = "Covid Background Channel"
+    private var lastVibrate:Long? = null
     data class BeaconDataClass(val majorVal:String, val minorVal: String, var rssiArray: IntArray = IntArray(3){0}, var distanceArray: DoubleArray = DoubleArray(3){10.0}, var avgRssi:Int = 0, var avgDistance:Double = 10.0)
 
     var idMap = mutableMapOf<Beacon, BeaconDataClass>()
+    var vib: Vibrator? = null
 
     @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +77,7 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
 
 
         createNotification()
+        vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
 
 
@@ -120,8 +120,8 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
             builder.show()
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (this.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 != PackageManager.PERMISSION_GRANTED
             ) {
 
@@ -197,6 +197,7 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
                 isScanning = false
                 broadcastBeacon.stop()
                 //mScanner.stopScan()
+
                 val deviceList = findViewById<TextView>(R.id.deviceList)
                 deviceList.setText("No Devices Found")
                 /*beaconManager!!.stopMonitoringBeaconsInRegion(Region(
@@ -256,6 +257,10 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
                                 distanceTemp[1] = distanceTemp[2]
                                 distanceTemp[2] = bcn.distance*3.2808399 //convert to feet
                                 idMap[bcn] = idMap[bcn]!!.copy(rssiArray = rssiTemp, distanceArray = distanceTemp, avgRssi = rssiTemp.average().toInt(), avgDistance = distanceTemp.average())
+                                if(distanceTemp.average() < 6){
+                                    contactNotify()
+                                }
+
                             }
                             else {
                                 idMap[bcn] = BeaconDataClass(majorVal = bcn.id2.toString(),
@@ -268,13 +273,7 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
                     }
 
 
-                    val tempMap = idMap
-                    val iter = tempMap.iterator()
-                    while (iter.hasNext()) {
-                        val keyval = iter.next()
-                        if (keyval.key !in beacons)
-                            idMap.remove(keyval.key)
-                    }
+
 
                     deviceList.text = ""
                     var minimumDistance = 50.0
@@ -305,6 +304,30 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
                         )
                     }
                 }
+                else{
+                    deviceList.text = "No Devices Found"
+                }
+                val tempMap = idMap
+                val iter = tempMap.iterator()
+                while (iter.hasNext()) {
+                    val keyval = iter.next()
+                    if (keyval.key !in beacons){
+                        val tempArray = idMap[keyval.key]!!.rssiArray
+                        if ((tempArray[1] == NULL_INT_PLACEHOLDER) and (tempArray[2] == NULL_INT_PLACEHOLDER))
+                            idMap.remove(keyval.key)
+                        else{
+                            tempArray[0] = tempArray[1]
+                            tempArray[1] = tempArray[2]
+                            tempArray[2] = NULL_INT_PLACEHOLDER
+
+                            idMap[keyval.key]!!.rssiArray = tempArray
+                        }
+
+
+
+                    }
+
+                }
             }
         })
 
@@ -331,6 +354,7 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
         //generate random values from 0-65536
         return Random(System.nanoTime()).nextInt(bound)
     }
+
 
 
     //lets check what happened with the permissions requested...
@@ -393,5 +417,35 @@ class MainActivity : AppCompatActivity(), BeaconConsumer {
 
 
         }
+    }
+
+    private fun contactNotify(){
+
+        val timestamp = System.currentTimeMillis()
+        if (lastVibrate == null){
+            lastVibrate = timestamp
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vib?.vibrate(VibrationEffect.createOneShot(1000, VibrationEffect.DEFAULT_AMPLITUDE));
+            } else {
+                //deprecated in API 26
+                vib?.vibrate(1000);
+            }
+            val message = "You are too close to somebody!"
+            Toast.makeText(this@MainActivity, message,
+                Toast.LENGTH_SHORT).show()
+        }
+        else if (timestamp - lastVibrate!! > 5000){
+            lastVibrate = timestamp
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vib?.vibrate(VibrationEffect.createOneShot(1000, VibrationEffect.DEFAULT_AMPLITUDE));
+            } else {
+                //deprecated in API 26
+                vib?.vibrate(1000);
+            }
+            val message = "You are too close to somebody!"
+            Toast.makeText(this@MainActivity, message,
+                Toast.LENGTH_SHORT).show()
+        }
+
     }
 }
